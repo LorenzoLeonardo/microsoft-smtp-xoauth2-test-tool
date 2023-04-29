@@ -1,0 +1,20 @@
+[package]
+name = "microsoft-smtp-xoauth2-test-tool"
+version = "0.1.0"
+edition = "2021"
+author = "Lorenzo Leonardo <enzotechcomputersolutions@gmail.com>"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+oauth2 = { version = "4.3.0", default-features = false }
+tokio = { version = "1.25.0", features = ["full"] }
+thiserror = "1.0.37"
+http = "0.2"
+serde = "1.0.152"
+serde_json = "1.0.93"
+strum = "0.24"
+strum_macros = "0.24"
+curl = "0.4.44"
+async-trait = "0.1.64"
+mail-send = "0.3.3"
