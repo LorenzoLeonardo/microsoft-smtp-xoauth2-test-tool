@@ -45,6 +45,7 @@ async fn main() -> OAuth2Result<()> {
     let token_file = PathBuf::from(format!("{}.json", sender_email.as_str()));
     let mut token_keeper = TokenKeeper::new(directory.to_path_buf());
 
+    // If there is no exsting token, get it from the cloud
     if let Err(_err) = token_keeper.read(&token_file) {
         let device_auth_response = oauth2_cloud
             .request_login(scopes, async_http_client)
@@ -69,10 +70,11 @@ async fn main() -> OAuth2Result<()> {
             .await?;
     }
 
+    // Start of sending Email
     let message = MessageBuilder::new()
         .from((sender_name.as_ref(), sender_email.as_ref()))
         .to(vec![(receiver_name.as_ref(), receiver_email.as_ref())])
-        .subject("Microsoft - Test XOAUTH SMTP!")
+        .subject("Microsoft - Test XOAUTH2 SMTP!")
         .html_body("<h1>Hello, world!</h1>")
         .text_body("Hello world!");
 
@@ -80,16 +82,27 @@ async fn main() -> OAuth2Result<()> {
         sender_email.as_ref(),
         token_keeper.access_token.secret().as_str(),
     );
-
-    SmtpClientBuilder::new("smtp.office365.com", 587)
+    eprintln!("Authenticating SMTP XOAUTH2 Credentials....");
+    let email_connect = SmtpClientBuilder::new("smtp.office365.com", 587)
         .implicit_tls(false)
         .credentials(credentials)
         .connect()
-        .await
-        .unwrap()
-        .send(message)
-        .await
-        .unwrap();
+        .await;
 
+    match email_connect {
+        Ok(mut result) => {
+            eprintln!("Sending SMTP XOAUTH2 Email....");
+            let send = result.send(message).await;
+            match send {
+                Ok(_result) => {}
+                Err(err) => {
+                    eprintln!("SMTP Sending Error: {err:?}");
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("SMTP Connecting Error: {err:?}");
+        }
+    }
     Ok(())
 }
