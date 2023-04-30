@@ -1,15 +1,20 @@
-use std::future::Future;
+use std::{future::Future, path::PathBuf};
 
-use crate::OAuth2Result;
+use crate::{
+    error::{ErrorCodes, OAuth2Error},
+    token_keeper::TokenKeeper,
+    OAuth2Result,
+};
 use async_trait::async_trait;
 use oauth2::{
-    basic::BasicClient, devicecode::StandardDeviceAuthorizationResponse, AccessToken, AuthUrl,
-    ClientId, ClientSecret, DeviceAuthorizationUrl, HttpRequest, HttpResponse, Scope,
-    TokenResponse, TokenUrl,
+    basic::{BasicClient, BasicTokenType},
+    devicecode::StandardDeviceAuthorizationResponse,
+    AuthUrl, ClientId, ClientSecret, DeviceAuthorizationUrl, EmptyExtraTokenFields, HttpRequest,
+    HttpResponse, Scope, StandardTokenResponse, TokenUrl,
 };
 
 #[async_trait]
-pub trait Login {
+pub trait Cloud {
     async fn request_login<
         F: Future<Output = Result<HttpResponse, RE>> + Send,
         RE: std::error::Error + 'static + Send,
@@ -26,10 +31,20 @@ pub trait Login {
         &self,
         device_auth_response: StandardDeviceAuthorizationResponse,
         async_http_callback: T,
-    ) -> OAuth2Result<AccessToken>;
+    ) -> OAuth2Result<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>>;
+    async fn get_access_token<
+        F: Future<Output = Result<HttpResponse, RE>> + Send,
+        RE: std::error::Error + 'static + Send,
+        T: Fn(HttpRequest) -> F + Send + Sync,
+    >(
+        &self,
+        file_directory: &PathBuf,
+        file_name: &PathBuf,
+        async_http_callback: T,
+    ) -> OAuth2Result<TokenKeeper>;
 }
 
-pub struct LoginWorkFlow {
+pub struct OAuth2Cloud {
     client_id: ClientId,
     client_secret: Option<ClientSecret>,
     device_auth_endpoint: DeviceAuthorizationUrl,
@@ -37,7 +52,7 @@ pub struct LoginWorkFlow {
 }
 
 #[async_trait]
-impl Login for LoginWorkFlow {
+impl Cloud for OAuth2Cloud {
     async fn request_login<
         F: Future<Output = Result<HttpResponse, RE>> + Send,
         RE: std::error::Error + 'static + Send,
@@ -53,15 +68,10 @@ impl Login for LoginWorkFlow {
         let device_auth_response = client
             .exchange_device_code()?
             .add_scope(Scope::new("offline_access".to_string()))
-            .add_scope(Scope::new("Mail.Send".to_string()))
+            .add_scope(Scope::new("SMTP.Send".to_string()))
             .request_async(async_http_callback)
             .await?;
 
-        eprintln!(
-            "Open this URL in your browser:\n{}\nand enter the code: {}",
-            &device_auth_response.verification_uri().as_str(),
-            &device_auth_response.user_code().secret()
-        );
         Ok(device_auth_response)
     }
     async fn poll_access_token<
@@ -72,18 +82,57 @@ impl Login for LoginWorkFlow {
         &self,
         device_auth_response: StandardDeviceAuthorizationResponse,
         async_http_callback: T,
-    ) -> OAuth2Result<AccessToken> {
+    ) -> OAuth2Result<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>> {
         let client = self.create_client()?;
         let token_result = client
             .exchange_device_access_token(&device_auth_response)
             .request_async(async_http_callback, tokio::time::sleep, None)
             .await?;
 
-        Ok(token_result.access_token().to_owned())
+        Ok(token_result)
+    }
+
+    async fn get_access_token<
+        F: Future<Output = Result<HttpResponse, RE>> + Send,
+        RE: std::error::Error + 'static + Send,
+        T: Fn(HttpRequest) -> F + Send + Sync,
+    >(
+        &self,
+        file_directory: &PathBuf,
+        file_name: &PathBuf,
+        async_http_callback: T,
+    ) -> OAuth2Result<TokenKeeper> {
+        let mut token_keeper = TokenKeeper::new(file_directory.as_path().to_path_buf());
+        token_keeper.read(file_name)?;
+
+        if token_keeper.has_access_token_expired() {
+            let client = self.create_client()?;
+            match token_keeper.refresh_token {
+                Some(ref_token) => {
+                    let response = client
+                        .exchange_refresh_token(&ref_token)
+                        .request_async(async_http_callback)
+                        .await?;
+                    token_keeper = TokenKeeper::from(response);
+                    token_keeper.set_directory(file_directory.to_path_buf());
+                    token_keeper.save(file_name)?;
+                    Ok(token_keeper)
+                }
+                None => {
+                    token_keeper.delete(file_name)?;
+                    Err(OAuth2Error::new(
+                        ErrorCodes::NoToken,
+                        "There is no refresh token.".into(),
+                    ))
+                }
+            }
+        } else {
+            Ok(token_keeper)
+        }
     }
 }
 
-impl LoginWorkFlow {
+impl OAuth2Cloud {
     pub fn new(
         client_id: ClientId,
         client_secret: Option<ClientSecret>,

@@ -29,6 +29,9 @@ pub enum ErrorCodes {
     ExpiredToken,
     ConfigurationError,
     UrlParseError,
+    SerdeJsonParseError,
+    IoError,
+    NoToken,
     OtherError,
 }
 
@@ -74,6 +77,19 @@ where
         OAuth2Error::new(ErrorCodes::ConfigurationError, e.to_string())
     }
 }
+
+impl From<serde_json::Error> for OAuth2Error {
+    fn from(e: serde_json::Error) -> Self {
+        OAuth2Error::new(ErrorCodes::SerdeJsonParseError, e.to_string())
+    }
+}
+
+impl From<std::io::Error> for OAuth2Error {
+    fn from(e: std::io::Error) -> Self {
+        OAuth2Error::new(ErrorCodes::IoError, e.to_string())
+    }
+}
+
 pub type OAuth2Result<T> = Result<T, OAuth2Error>;
 
 #[cfg(test)]
