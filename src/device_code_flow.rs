@@ -46,7 +46,7 @@ pub trait Cloud {
     ) -> OAuth2Result<TokenKeeper>;
 }
 
-pub struct OAuth2Cloud {
+pub struct DeviceCodeFlow {
     client_id: ClientId,
     client_secret: Option<ClientSecret>,
     device_auth_endpoint: DeviceAuthorizationUrl,
@@ -54,7 +54,7 @@ pub struct OAuth2Cloud {
 }
 
 #[async_trait]
-impl Cloud for OAuth2Cloud {
+impl Cloud for DeviceCodeFlow {
     async fn request_login<
         F: Future<Output = Result<HttpResponse, RE>> + Send,
         RE: std::error::Error + 'static + Send,
@@ -139,7 +139,7 @@ impl Cloud for OAuth2Cloud {
     }
 }
 
-impl OAuth2Cloud {
+impl DeviceCodeFlow {
     pub fn new(
         client_id: ClientId,
         client_secret: Option<ClientSecret>,
