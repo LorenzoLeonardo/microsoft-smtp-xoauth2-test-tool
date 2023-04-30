@@ -63,6 +63,7 @@ impl Cloud for OAuth2Cloud {
         scopes: Vec<Scope>,
         async_http_callback: T,
     ) -> OAuth2Result<StandardDeviceAuthorizationResponse> {
+        eprintln!("There is no Access token, please login.");
         let client = self
             .create_client()?
             .set_device_authorization_url(self.device_auth_endpoint.to_owned());
@@ -89,7 +90,7 @@ impl Cloud for OAuth2Cloud {
             .exchange_device_access_token(&device_auth_response)
             .request_async(async_http_callback, tokio::time::sleep, None)
             .await?;
-
+        eprintln!("Access token successfuly retrieved from the endpoint.");
         Ok(token_result)
     }
 
@@ -109,6 +110,9 @@ impl Cloud for OAuth2Cloud {
         if token_keeper.has_access_token_expired() {
             match token_keeper.refresh_token {
                 Some(ref_token) => {
+                    eprintln!(
+                        "Access token has expired, contacting endpoint to get a new access token."
+                    );
                     let response = self
                         .create_client()?
                         .exchange_refresh_token(&ref_token)
@@ -120,6 +124,7 @@ impl Cloud for OAuth2Cloud {
                     Ok(token_keeper)
                 }
                 None => {
+                    eprintln!("Access token has expired but there is no refresh token, please login again.");
                     token_keeper.delete(file_name)?;
                     Err(OAuth2Error::new(
                         ErrorCodes::NoToken,
