@@ -61,7 +61,7 @@ impl fmt::Display for DebugHttpRequest {
 /// Synchronous HTTP client.
 ///
 pub async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, Error> {
-    eprintln!("{}", DebugHttpRequest::from(&request));
+    log::debug!("{}", DebugHttpRequest::from(&request));
     let mut easy = Easy::new();
     easy.url(&request.url.to_string()[..])
         .map_err(Error::Curl)?;
@@ -125,7 +125,7 @@ pub async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, Err
         .transpose()?
         .unwrap_or_else(HeaderMap::new);
 
-    eprintln!(
+    log::debug!(
         "Response:\n\tHeader:{:?}\n\tBody:{}\n\tStatus Code:{}\n\n",
         &response_header,
         String::from_utf8(data.to_owned()).unwrap_or(String::new()),

@@ -8,6 +8,7 @@ use std::{env, path::PathBuf};
 
 // 3rd party crates
 use directories::UserDirs;
+use env_logger::Env;
 use mail_send::{mail_builder::MessageBuilder, Credentials, SmtpClientBuilder};
 use oauth2::{ClientId, DeviceAuthorizationUrl, Scope, TokenUrl};
 
@@ -17,6 +18,10 @@ use error::OAuth2Result;
 use http_client::async_http_client;
 use token_keeper::TokenKeeper;
 
+fn init_logger(level: &str) {
+    env_logger::Builder::from_env(Env::default().default_filter_or(level)).init();
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> OAuth2Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -25,6 +30,8 @@ async fn main() -> OAuth2Result<()> {
     let sender_name = &args[3];
     let receiver_email = &args[4];
     let receiver_name = &args[5];
+    init_logger(args[6].as_str());
+
     let oauth2_cloud = OAuth2Cloud::new(
         ClientId::new(client_id.to_string()),
         None,
@@ -51,7 +58,7 @@ async fn main() -> OAuth2Result<()> {
             .request_login(scopes, async_http_client)
             .await?;
 
-        eprintln!(
+        log::info!(
             "Open this URL in your browser:\n{}\nand enter the code: {}\n\n",
             &device_auth_response.verification_uri().as_str(),
             &device_auth_response.user_code().secret()
@@ -82,7 +89,7 @@ async fn main() -> OAuth2Result<()> {
         sender_email.as_ref(),
         token_keeper.access_token.secret().as_str(),
     );
-    eprintln!("Authenticating SMTP XOAUTH2 Credentials....");
+    log::info!("Authenticating SMTP XOAUTH2 Credentials....");
     let email_connect = SmtpClientBuilder::new("smtp.office365.com", 587)
         .implicit_tls(false)
         .credentials(credentials)
@@ -91,17 +98,17 @@ async fn main() -> OAuth2Result<()> {
 
     match email_connect {
         Ok(mut result) => {
-            eprintln!("Sending SMTP XOAUTH2 Email....");
+            log::info!("Sending SMTP XOAUTH2 Email....");
             let send = result.send(message).await;
             match send {
                 Ok(_result) => {}
                 Err(err) => {
-                    eprintln!("SMTP Sending Error: {err:?}");
+                    log::error!("SMTP Sending Error: {err:?}");
                 }
             }
         }
         Err(err) => {
-            eprintln!("SMTP Connecting Error: {err:?}");
+            log::error!("SMTP Connecting Error: {err:?}");
         }
     }
     Ok(())
