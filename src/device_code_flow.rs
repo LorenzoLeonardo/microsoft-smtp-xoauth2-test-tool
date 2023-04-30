@@ -1,18 +1,25 @@
 // Standard libraries
-use std::{future::Future, path::Path};
+use std::{
+    future::Future,
+    path::{Path, PathBuf},
+};
 
 // 3rd party crates
 use async_trait::async_trait;
+use directories::UserDirs;
 use oauth2::{
     basic::{BasicClient, BasicTokenType},
     devicecode::StandardDeviceAuthorizationResponse,
-    AuthUrl, ClientId, ClientSecret, DeviceAuthorizationUrl, EmptyExtraTokenFields, HttpRequest,
-    HttpResponse, Scope, StandardTokenResponse, TokenUrl,
+    AccessToken, AuthUrl, ClientId, ClientSecret, DeviceAuthorizationUrl, EmptyExtraTokenFields,
+    HttpRequest, HttpResponse, Scope, StandardTokenResponse, TokenUrl,
 };
 
 // My crates
-use crate::error::{ErrorCodes, OAuth2Error, OAuth2Result};
 use crate::TokenKeeper;
+use crate::{
+    error::{ErrorCodes, OAuth2Error, OAuth2Result},
+    http_client::async_http_client,
+};
 
 #[async_trait]
 pub trait DeviceCodeFlowTrait {
@@ -163,4 +170,56 @@ impl DeviceCodeFlow {
         )
         .set_auth_type(oauth2::AuthType::RequestBody))
     }
+}
+
+pub async fn device_code_flow(
+    client_id: &str,
+    client_secret: Option<ClientSecret>,
+    sender_email: &str,
+) -> OAuth2Result<AccessToken> {
+    let oauth2_cloud = DeviceCodeFlow::new(
+        ClientId::new(client_id.to_string()),
+        client_secret,
+        DeviceAuthorizationUrl::new(
+            "https://login.microsoftonline.com/common/oauth2/v2.0/devicecode".to_string(),
+        )?,
+        TokenUrl::new("https://login.microsoftonline.com/common/oauth2/v2.0/token".to_string())?,
+    );
+    let scopes = vec![
+        Scope::new("offline_access".to_string()),
+        Scope::new("SMTP.Send".to_string()),
+    ];
+    let directory = UserDirs::new().unwrap();
+    let mut directory = directory.home_dir().to_owned();
+
+    directory = directory.join("token");
+
+    let token_file = PathBuf::from(format!("{}_device_code_flow.json", sender_email));
+    let mut token_keeper = TokenKeeper::new(directory.to_path_buf());
+
+    // If there is no exsting token, get it from the cloud
+    if let Err(_err) = token_keeper.read(&token_file) {
+        let device_auth_response = oauth2_cloud
+            .request_device_code(scopes, async_http_client)
+            .await?;
+
+        log::info!(
+            "Open this URL in your browser:\n{}\nand enter the code: {}\n\n",
+            &device_auth_response.verification_uri().as_str(),
+            &device_auth_response.user_code().secret()
+        );
+
+        let token = oauth2_cloud
+            .poll_access_token(device_auth_response, async_http_client)
+            .await?;
+        token_keeper = TokenKeeper::from(token);
+        token_keeper.set_directory(directory.to_path_buf());
+
+        token_keeper.save(&token_file)?;
+    } else {
+        token_keeper = oauth2_cloud
+            .get_access_token(&directory, &token_file, async_http_client)
+            .await?;
+    }
+    Ok(token_keeper.access_token)
 }
