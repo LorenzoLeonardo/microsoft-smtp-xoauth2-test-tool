@@ -5,7 +5,7 @@ use oauth2::{
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -27,15 +27,13 @@ impl From<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>> for Toke
     fn from(
         token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>,
     ) -> TokenKeeper {
-        let refresh_token = match token_response.refresh_token() {
-            Some(ref_tok) => Some(ref_tok.to_owned()),
-            None => None,
-        };
+        let refresh_token = token_response
+            .refresh_token()
+            .map(|ref_tok| ref_tok.to_owned());
 
-        let scopes = match token_response.scopes() {
-            None => None,
-            Some(scope) => Some(scope.iter().map(|e| e.to_string()).collect()),
-        };
+        let scopes = token_response
+            .scopes()
+            .map(|scope| scope.iter().map(|e| e.to_string()).collect());
 
         Self {
             access_token: token_response.access_token().to_owned(),
@@ -77,14 +75,14 @@ impl TokenKeeper {
         }
     }
 
-    pub fn read(&mut self, file_name: &PathBuf) -> OAuth2Result<()> {
+    pub fn read(&mut self, file_name: &Path) -> OAuth2Result<()> {
         let input_path = self.file_directory.join(file_name);
-        let text = std::fs::read_to_string(&input_path)?;
+        let text = std::fs::read_to_string(input_path)?;
         *self = serde_json::from_str::<TokenKeeper>(&text)?;
         Ok(())
     }
 
-    pub fn save(&self, file_name: &PathBuf) -> OAuth2Result<()> {
+    pub fn save(&self, file_name: &Path) -> OAuth2Result<()> {
         let input_path = self.file_directory.join(file_name);
         let json = serde_json::to_string(self)?;
 
@@ -97,7 +95,7 @@ impl TokenKeeper {
         Ok(())
     }
 
-    pub fn delete(&self, file_name: &PathBuf) -> OAuth2Result<()> {
+    pub fn delete(&self, file_name: &Path) -> OAuth2Result<()> {
         let input_path = self.file_directory.join(file_name);
         Ok(fs::remove_file(input_path)?)
     }

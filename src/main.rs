@@ -12,7 +12,7 @@ use directories::UserDirs;
 use cloud::{Cloud, OAuth2Cloud};
 use error::OAuth2Result;
 use mail_send::{mail_builder::MessageBuilder, Credentials, SmtpClientBuilder};
-use oauth2::{ClientId, DeviceAuthorizationUrl, TokenUrl};
+use oauth2::{ClientId, DeviceAuthorizationUrl, Scope, TokenUrl};
 
 use crate::{curl::async_http_client, token_keeper::TokenKeeper};
 
@@ -32,16 +32,22 @@ async fn main() -> OAuth2Result<()> {
         )?,
         TokenUrl::new("https://login.microsoftonline.com/common/oauth2/v2.0/token".to_string())?,
     );
+    let scopes = vec![
+        Scope::new("offline_access".to_string()),
+        Scope::new("SMTP.Send".to_string()),
+    ];
     let directory = UserDirs::new().unwrap();
     let mut directory = directory.home_dir().to_owned();
+
     directory = directory.join("token");
 
     let token_file = PathBuf::from(format!("{}.json", sender_email.as_str()));
     let mut token_keeper = TokenKeeper::new(directory.to_path_buf());
 
-    if let Err(err) = token_keeper.read(&token_file) {
-        eprintln!("ERROR: {:?}", err);
-        let device_auth_response = oauth2_cloud.request_login(async_http_client).await?;
+    if let Err(_err) = token_keeper.read(&token_file) {
+        let device_auth_response = oauth2_cloud
+            .request_login(scopes, async_http_client)
+            .await?;
 
         eprintln!(
             "Open this URL in your browser:\n{}\nand enter the code: {}\n\n",

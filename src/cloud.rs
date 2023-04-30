@@ -1,4 +1,4 @@
-use std::{future::Future, path::PathBuf};
+use std::{future::Future, path::Path};
 
 use crate::{
     error::{ErrorCodes, OAuth2Error},
@@ -21,6 +21,7 @@ pub trait Cloud {
         T: Fn(HttpRequest) -> F + Send + Sync,
     >(
         &self,
+        scopes: Vec<Scope>,
         async_http_callback: T,
     ) -> OAuth2Result<StandardDeviceAuthorizationResponse>;
     async fn poll_access_token<
@@ -38,8 +39,8 @@ pub trait Cloud {
         T: Fn(HttpRequest) -> F + Send + Sync,
     >(
         &self,
-        file_directory: &PathBuf,
-        file_name: &PathBuf,
+        file_directory: &Path,
+        file_name: &Path,
         async_http_callback: T,
     ) -> OAuth2Result<TokenKeeper>;
 }
@@ -59,6 +60,7 @@ impl Cloud for OAuth2Cloud {
         T: Fn(HttpRequest) -> F + Send + Sync,
     >(
         &self,
+        scopes: Vec<Scope>,
         async_http_callback: T,
     ) -> OAuth2Result<StandardDeviceAuthorizationResponse> {
         let client = self
@@ -67,8 +69,7 @@ impl Cloud for OAuth2Cloud {
 
         let device_auth_response = client
             .exchange_device_code()?
-            .add_scope(Scope::new("offline_access".to_string()))
-            .add_scope(Scope::new("SMTP.Send".to_string()))
+            .add_scopes(scopes)
             .request_async(async_http_callback)
             .await?;
 
@@ -98,11 +99,11 @@ impl Cloud for OAuth2Cloud {
         T: Fn(HttpRequest) -> F + Send + Sync,
     >(
         &self,
-        file_directory: &PathBuf,
-        file_name: &PathBuf,
+        file_directory: &Path,
+        file_name: &Path,
         async_http_callback: T,
     ) -> OAuth2Result<TokenKeeper> {
-        let mut token_keeper = TokenKeeper::new(file_directory.as_path().to_path_buf());
+        let mut token_keeper = TokenKeeper::new(file_directory.to_path_buf());
         token_keeper.read(file_name)?;
 
         if token_keeper.has_access_token_expired() {
