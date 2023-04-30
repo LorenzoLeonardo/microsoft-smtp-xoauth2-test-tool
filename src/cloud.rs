@@ -107,10 +107,10 @@ impl Cloud for OAuth2Cloud {
         token_keeper.read(file_name)?;
 
         if token_keeper.has_access_token_expired() {
-            let client = self.create_client()?;
             match token_keeper.refresh_token {
                 Some(ref_token) => {
-                    let response = client
+                    let response = self
+                        .create_client()?
                         .exchange_refresh_token(&ref_token)
                         .request_async(async_http_callback)
                         .await?;

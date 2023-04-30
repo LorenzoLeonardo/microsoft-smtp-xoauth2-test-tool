@@ -76,9 +76,12 @@ impl TokenKeeper {
     }
 
     pub fn read(&mut self, file_name: &Path) -> OAuth2Result<()> {
+        let temp_dir = self.file_directory.clone();
         let input_path = self.file_directory.join(file_name);
         let text = std::fs::read_to_string(input_path)?;
+
         *self = serde_json::from_str::<TokenKeeper>(&text)?;
+        self.set_directory(temp_dir);
         Ok(())
     }
 
