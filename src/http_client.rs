@@ -1,11 +1,12 @@
+// Standard libraries
 use std::fmt;
 use std::io::Read;
 
+// 3rd party crates
 use curl::easy::Easy;
 use http::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use http::method::Method;
 use http::status::StatusCode;
-
 use oauth2::url::Url;
 use oauth2::{HttpRequest, HttpResponse};
 

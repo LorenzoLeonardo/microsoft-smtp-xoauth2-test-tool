@@ -1,5 +1,7 @@
+// Standard libraries
 use std::{error::Error, str::FromStr};
 
+// 3rd party crates
 use oauth2::{
     url, ConfigurationError, ErrorResponseType, RequestTokenError, StandardErrorResponse,
 };

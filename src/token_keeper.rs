@@ -1,14 +1,18 @@
-use oauth2::basic::BasicTokenType;
-use oauth2::{
-    AccessToken, EmptyExtraTokenFields, RefreshToken, StandardTokenResponse, TokenResponse,
-};
-use serde::{Deserialize, Serialize};
+// Standard libraries
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+// 3rd party crates
+use oauth2::basic::BasicTokenType;
+use oauth2::{
+    AccessToken, EmptyExtraTokenFields, RefreshToken, StandardTokenResponse, TokenResponse,
+};
+use serde::{Deserialize, Serialize};
+
+// My crates
 use crate::error::OAuth2Result;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

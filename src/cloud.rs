@@ -1,10 +1,7 @@
+// Standard libraries
 use std::{future::Future, path::Path};
 
-use crate::{
-    error::{ErrorCodes, OAuth2Error},
-    token_keeper::TokenKeeper,
-    OAuth2Result,
-};
+// 3rd party crates
 use async_trait::async_trait;
 use oauth2::{
     basic::{BasicClient, BasicTokenType},
@@ -12,6 +9,10 @@ use oauth2::{
     AuthUrl, ClientId, ClientSecret, DeviceAuthorizationUrl, EmptyExtraTokenFields, HttpRequest,
     HttpResponse, Scope, StandardTokenResponse, TokenUrl,
 };
+
+// My crates
+use crate::error::{ErrorCodes, OAuth2Error, OAuth2Result};
+use crate::TokenKeeper;
 
 #[async_trait]
 pub trait Cloud {

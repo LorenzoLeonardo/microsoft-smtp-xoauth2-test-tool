@@ -1,20 +1,21 @@
 mod cloud;
-mod curl;
 mod error;
+mod http_client;
 mod token_keeper;
 
+// Standard libraries
 use std::{env, path::PathBuf};
 
 // 3rd party crates
 use directories::UserDirs;
+use mail_send::{mail_builder::MessageBuilder, Credentials, SmtpClientBuilder};
+use oauth2::{ClientId, DeviceAuthorizationUrl, Scope, TokenUrl};
 
 // My crates
 use cloud::{Cloud, OAuth2Cloud};
 use error::OAuth2Result;
-use mail_send::{mail_builder::MessageBuilder, Credentials, SmtpClientBuilder};
-use oauth2::{ClientId, DeviceAuthorizationUrl, Scope, TokenUrl};
-
-use crate::{curl::async_http_client, token_keeper::TokenKeeper};
+use http_client::async_http_client;
+use token_keeper::TokenKeeper;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> OAuth2Result<()> {
