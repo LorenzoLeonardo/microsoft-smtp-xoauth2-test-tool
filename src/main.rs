@@ -13,7 +13,7 @@ use mail_send::{mail_builder::MessageBuilder, Credentials, SmtpClientBuilder};
 use oauth2::{AccessToken, ClientId, DeviceAuthorizationUrl, Scope, TokenUrl};
 
 // My crates
-use device_code_flow::{Cloud, DeviceCodeFlow};
+use device_code_flow::{DeviceCodeFlow, DeviceCodeFlowTrait};
 use error::OAuth2Result;
 use http_client::async_http_client;
 use token_keeper::TokenKeeper;

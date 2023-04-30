@@ -15,7 +15,7 @@ use crate::error::{ErrorCodes, OAuth2Error, OAuth2Result};
 use crate::TokenKeeper;
 
 #[async_trait]
-pub trait Cloud {
+pub trait DeviceCodeFlowTrait {
     async fn request_device_code<
         F: Future<Output = Result<HttpResponse, RE>> + Send,
         RE: std::error::Error + 'static + Send,
@@ -54,7 +54,7 @@ pub struct DeviceCodeFlow {
 }
 
 #[async_trait]
-impl Cloud for DeviceCodeFlow {
+impl DeviceCodeFlowTrait for DeviceCodeFlow {
     async fn request_device_code<
         F: Future<Output = Result<HttpResponse, RE>> + Send,
         RE: std::error::Error + 'static + Send,
