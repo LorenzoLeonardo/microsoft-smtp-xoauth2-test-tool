@@ -46,7 +46,7 @@ async fn device_code_flow(client_id: &str, sender_email: &str) -> OAuth2Result<A
     // If there is no exsting token, get it from the cloud
     if let Err(_err) = token_keeper.read(&token_file) {
         let device_auth_response = oauth2_cloud
-            .request_login(scopes, async_http_client)
+            .request_device_code(scopes, async_http_client)
             .await?;
 
         log::info!(

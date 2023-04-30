@@ -16,7 +16,7 @@ use crate::TokenKeeper;
 
 #[async_trait]
 pub trait Cloud {
-    async fn request_login<
+    async fn request_device_code<
         F: Future<Output = Result<HttpResponse, RE>> + Send,
         RE: std::error::Error + 'static + Send,
         T: Fn(HttpRequest) -> F + Send + Sync,
@@ -55,7 +55,7 @@ pub struct DeviceCodeFlow {
 
 #[async_trait]
 impl Cloud for DeviceCodeFlow {
-    async fn request_login<
+    async fn request_device_code<
         F: Future<Output = Result<HttpResponse, RE>> + Send,
         RE: std::error::Error + 'static + Send,
         T: Fn(HttpRequest) -> F + Send + Sync,
