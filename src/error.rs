@@ -1,4 +1,5 @@
 // Standard libraries
+use std::fmt::Debug;
 use std::{error::Error, str::FromStr};
 
 // 3rd party crates
@@ -27,13 +28,18 @@ pub enum ErrorCodes {
     UnsupportedTokenType,
     UnsupportedGrantType,
     AuthorizationPending,
+    AuthorizationDeclined,
     SlowDown,
     ExpiredToken,
+    InteractionRequired,
+    LoginRequired,
     ConfigurationError,
     UrlParseError,
     SerdeJsonParseError,
     IoError,
     NoToken,
+    RequestError,
+    ParseError,
     OtherError,
 }
 
@@ -70,13 +76,33 @@ impl From<url::ParseError> for OAuth2Error {
     }
 }
 
+impl<O> From<StandardErrorResponse<O>> for ErrorCodes
+where
+    O: ErrorResponseType + 'static + ToString,
+{
+    fn from(e: StandardErrorResponse<O>) -> Self {
+        ErrorCodes::from(e.error().to_string())
+    }
+}
+
 impl<E, O> From<RequestTokenError<E, StandardErrorResponse<O>>> for OAuth2Error
 where
     E: Error + 'static,
-    O: ErrorResponseType + 'static,
+    O: ErrorResponseType + 'static + ToString + Clone,
 {
     fn from(e: RequestTokenError<E, StandardErrorResponse<O>>) -> Self {
-        OAuth2Error::new(ErrorCodes::ConfigurationError, e.to_string())
+        match e {
+            RequestTokenError::ServerResponse(err) => {
+                OAuth2Error::new(ErrorCodes::from(err.clone()), format!("{:?}", err))
+            }
+            RequestTokenError::Request(err) => {
+                OAuth2Error::new(ErrorCodes::RequestError, err.to_string())
+            }
+            RequestTokenError::Parse(err, _data) => {
+                OAuth2Error::new(ErrorCodes::ParseError, err.to_string())
+            }
+            RequestTokenError::Other(err) => OAuth2Error::new(ErrorCodes::OtherError, err),
+        }
     }
 }
 
