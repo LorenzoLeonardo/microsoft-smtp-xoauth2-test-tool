@@ -122,11 +122,24 @@ impl AuthCodeGrantTrait for AuthCodeGrant {
                         .create_client()?
                         .exchange_refresh_token(&ref_token)
                         .request_async(async_http_callback)
-                        .await?;
-                    token_keeper = TokenKeeper::from(response);
-                    token_keeper.set_directory(file_directory.to_path_buf());
-                    token_keeper.save(file_name)?;
-                    Ok(token_keeper)
+                        .await;
+
+                    match response {
+                        Ok(res) => {
+                            token_keeper = TokenKeeper::from(res);
+                            token_keeper.set_directory(file_directory.to_path_buf());
+                            token_keeper.save(file_name)?;
+                            Ok(token_keeper)
+                        }
+                        Err(e) => {
+                            let error = OAuth2Error::from(e);
+                            if error.error_code == ErrorCodes::InvalidGrant {
+                                let file = TokenKeeper::new(file_directory.to_path_buf());
+                                file.delete(file_name).unwrap()
+                            }
+                            Err(error)
+                        }
+                    }
                 }
                 None => {
                     log::info!("Access token has expired but there is no refresh token, please login again.");
