@@ -81,7 +81,9 @@ async fn main() -> OAuth2Result<()> {
             log::info!("Sending SMTP XOAUTH2 Email....");
             let send = result.send(message).await;
             match send {
-                Ok(_result) => {}
+                Ok(_result) => {
+                    log::info!("Sending Email success!!");
+                }
                 Err(err) => {
                     log::error!("SMTP Sending Error: {err:?}");
                 }

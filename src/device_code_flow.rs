@@ -200,7 +200,7 @@ pub async fn device_code_flow(
     );
     let scopes = vec![
         Scope::new("offline_access".to_string()),
-        Scope::new("SMTP.Send".to_string()),
+        Scope::new("https://outlook.office.com/SMTP.Send".to_string()),
     ];
     let directory = UserDirs::new().unwrap();
     let mut directory = directory.home_dir().to_owned();
