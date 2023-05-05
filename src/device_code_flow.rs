@@ -207,7 +207,10 @@ pub async fn device_code_flow(
 
     directory = directory.join("token");
 
-    let token_file = PathBuf::from(format!("{}_device_code_flow.json", sender_email));
+    let token_file = PathBuf::from(format!(
+        "{}_{}_device_code_flow.json",
+        client_id, sender_email
+    ));
     let mut token_keeper = TokenKeeper::new(directory.to_path_buf());
 
     // If there is no exsting token, get it from the cloud

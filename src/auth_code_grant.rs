@@ -202,7 +202,10 @@ pub async fn auth_code_grant(
 
     directory = directory.join("token");
 
-    let token_file = PathBuf::from(format!("{}_auth_code_grant.json", sender_email));
+    let token_file = PathBuf::from(format!(
+        "{}_{}_auth_code_grant.json",
+        client_id, sender_email
+    ));
     let mut token_keeper = TokenKeeper::new(directory.to_path_buf());
 
     // If there is no exsting token, get it from the cloud
