@@ -188,7 +188,6 @@ impl DeviceCodeFlow {
 pub async fn device_code_flow(
     client_id: &str,
     client_secret: Option<ClientSecret>,
-    sender_email: &str,
 ) -> OAuth2Result<AccessToken> {
     let oauth2_cloud = DeviceCodeFlow::new(
         ClientId::new(client_id.to_string()),
@@ -201,16 +200,14 @@ pub async fn device_code_flow(
     let scopes = vec![
         Scope::new("offline_access".to_string()),
         Scope::new("https://outlook.office.com/SMTP.Send".to_string()),
+        Scope::new("https://outlook.office.com/User.Read".to_string()),
     ];
     let directory = UserDirs::new().unwrap();
     let mut directory = directory.home_dir().to_owned();
 
     directory = directory.join("token");
 
-    let token_file = PathBuf::from(format!(
-        "{}_{}_device_code_flow.json",
-        client_id, sender_email
-    ));
+    let token_file = PathBuf::from(format!("{}_device_code_flow.json", client_id));
     let mut token_keeper = TokenKeeper::new(directory.to_path_buf());
 
     // If there is no exsting token, get it from the cloud

@@ -1,6 +1,7 @@
 mod auth_code_grant;
 mod device_code_flow;
 mod error;
+mod get_profile;
 mod http_client;
 mod token_keeper;
 
@@ -17,6 +18,7 @@ use strum_macros::EnumString;
 // My crates
 use crate::auth_code_grant::auth_code_grant;
 use crate::device_code_flow::device_code_flow;
+use crate::get_profile::SenderProfile;
 use error::OAuth2Result;
 use token_keeper::TokenKeeper;
 
@@ -24,8 +26,6 @@ enum ParamIndex {
     TokenGrantType = 1,
     ClientId,
     ClientSecret,
-    SenderEmail,
-    SenderName,
     RecipientEmail,
     RecipientName,
     DebugLevel,
@@ -57,8 +57,6 @@ async fn main() -> OAuth2Result<()> {
         )),
     };
     let client_id = &args[ParamIndex::ClientId as usize];
-    let sender_email = &args[ParamIndex::SenderEmail as usize];
-    let sender_name = &args[ParamIndex::SenderName as usize];
     let receiver_email = &args[ParamIndex::RecipientEmail as usize];
     let receiver_name = &args[ParamIndex::RecipientName as usize];
     init_logger(args[ParamIndex::DebugLevel as usize].as_str());
@@ -66,23 +64,29 @@ async fn main() -> OAuth2Result<()> {
     let access_token =
         match OAuth2TokenGrantFlow::from(args[ParamIndex::TokenGrantType as usize].to_string()) {
             OAuth2TokenGrantFlow::AuthorizationCodeGrant => {
-                auth_code_grant(client_id, client_secret, sender_email).await?
+                auth_code_grant(client_id, client_secret).await?
             }
             OAuth2TokenGrantFlow::DeviceCodeFlow => {
-                device_code_flow(client_id, client_secret, sender_email).await?
+                device_code_flow(client_id, client_secret).await?
             }
         };
 
+    let sender_profile = SenderProfile::get_sender_profile(&access_token).await?;
     // Start of sending Email
     let message = MessageBuilder::new()
-        .from((sender_name.as_ref(), sender_email.as_ref()))
+        .from((
+            sender_profile.display_name.as_ref(),
+            sender_profile.email_address.as_ref(),
+        ))
         .to(vec![(receiver_name.as_ref(), receiver_email.as_ref())])
         .subject("Microsoft - Test XOAUTH2 SMTP!")
         .html_body("<h1>Hello, world!</h1>")
         .text_body("Hello world!");
 
-    let credentials =
-        Credentials::new_xoauth2(sender_email.as_ref(), access_token.secret().as_str());
+    let credentials = Credentials::new_xoauth2(
+        sender_profile.email_address.as_ref(),
+        access_token.secret().as_str(),
+    );
     log::info!("Authenticating SMTP XOAUTH2 Credentials....");
     let email_connect = SmtpClientBuilder::new("smtp.office365.com", 587)
         .implicit_tls(false)
