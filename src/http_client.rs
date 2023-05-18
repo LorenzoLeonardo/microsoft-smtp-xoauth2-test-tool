@@ -1,15 +1,15 @@
 // Standard libraries
 use std::fmt;
-use std::io::Read;
 
 // 3rd party crates
-use curl::easy::Easy;
+use async_curl::async_curl::AsyncCurl;
+use async_curl::response_handler::ResponseHandler;
+use curl::easy::Easy2;
 use http::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use http::method::Method;
 use http::status::StatusCode;
 use oauth2::url::Url;
 use oauth2::{HttpRequest, HttpResponse};
-
 ///
 /// Error type returned by failed curl HTTP requests.
 ///
@@ -21,6 +21,9 @@ pub enum Error {
     /// Non-curl HTTP error.
     #[error("HTTP error")]
     Http(#[source] http::Error),
+    /// Error returned by curl crate.
+    #[error("async curl request failed")]
+    AsyncCurl(#[source] async_curl::async_curl_error::AsyncCurlError),
     /// Other error.
     #[error("Other error: {}", _0)]
     Other(String),
@@ -58,13 +61,17 @@ impl fmt::Display for DebugHttpRequest {
     }
 }
 ///
-/// Synchronous HTTP client.
+/// Asynchronous HTTP client.
 ///
 pub async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, Error> {
     log::debug!("{}", DebugHttpRequest::from(&request));
-    let mut easy = Easy::new();
-    easy.url(&request.url.to_string()[..])
-        .map_err(Error::Curl)?;
+    let curl = AsyncCurl::new();
+    let mut easy = Easy2::new(ResponseHandler::new());
+
+    easy.url(&request.url.to_string()[..]).map_err(|e| {
+        log::error!("{:?}", e);
+        Error::Curl(e)
+    })?;
 
     let mut headers = curl::easy::List::new();
     request.headers.iter().try_for_each(|(name, value)| {
@@ -78,46 +85,58 @@ pub async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, Err
                     value.as_bytes()
                 )))?
             ))
-            .map_err(Error::Curl)
+            .map_err(|e| {
+                log::error!("{:?}", e);
+                Error::Curl(e)
+            })
     })?;
 
-    easy.http_headers(headers).map_err(Error::Curl)?;
+    easy.http_headers(headers).map_err(|e| {
+        log::error!("{:?}", e);
+        Error::Curl(e)
+    })?;
 
     if let Method::POST = request.method {
         easy.post(true).map_err(Error::Curl)?;
         easy.post_field_size(request.body.len() as u64)
-            .map_err(Error::Curl)?;
+            .map_err(|e| {
+                log::error!("{:?}", e);
+                Error::Curl(e)
+            })?;
     } else {
         assert_eq!(request.method, Method::GET);
     }
 
-    let mut form_slice = &request.body[..];
-    let mut data = Vec::new();
-    {
-        let mut transfer = easy.transfer();
-
-        transfer
-            .read_function(|buf| Ok(form_slice.read(buf).unwrap_or(0)))
-            .map_err(Error::Curl)?;
-
-        transfer
-            .write_function(|new_data| {
-                data.extend_from_slice(new_data);
-                Ok(new_data.len())
-            })
-            .map_err(Error::Curl)?;
-
-        transfer.perform().map_err(Error::Curl)?;
+    if !request.body.is_empty() {
+        let form_slice = &request.body[..];
+        easy.post_fields_copy(form_slice).map_err(|e| {
+            log::error!("{:?}", e);
+            Error::Curl(e)
+        })?;
     }
+    let mut easy = curl.send_request(easy).await.map_err(|e| {
+        log::error!("{:?}", e);
+        Error::AsyncCurl(e)
+    })?;
 
-    let status_code = easy.response_code().map_err(Error::Curl)? as u16;
+    let data = easy.get_ref().to_owned().get_data();
+    let status_code = easy.response_code().map_err(|e| {
+        log::error!("{:?}", e);
+        Error::Curl(e)
+    })? as u16;
     let response_header = easy
         .content_type()
-        .map_err(Error::Curl)?
+        .map_err(|e| {
+            log::error!("{:?}", e);
+            Error::Curl(e)
+        })?
         .map(|content_type| {
             Ok(vec![(
                 CONTENT_TYPE,
-                HeaderValue::from_str(content_type).map_err(|err| Error::Http(err.into()))?,
+                HeaderValue::from_str(content_type).map_err(|err| {
+                    log::error!("{:?}", err);
+                    Error::Http(err.into())
+                })?,
             )]
             .into_iter()
             .collect::<HeaderMap>())
@@ -132,7 +151,10 @@ pub async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, Err
         &status_code
     );
     Ok(HttpResponse {
-        status_code: StatusCode::from_u16(status_code).map_err(|err| Error::Http(err.into()))?,
+        status_code: StatusCode::from_u16(status_code).map_err(|err| {
+            log::error!("{:?}", err);
+            Error::Http(err.into())
+        })?,
         headers: response_header,
         body: data,
     })

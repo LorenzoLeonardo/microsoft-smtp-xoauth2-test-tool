@@ -4,10 +4,8 @@ version = "0.1.0"
 edition = "2021"
 author = "Lorenzo Leonardo <enzotechcomputersolutions@gmail.com>"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-oauth2 = { version = "4.3.0", default-features = false }
+oauth2 = { version = "4.4.0", default-features = false }
 tokio = { version = "1.25.0", features = ["full"] }
 thiserror = "1.0.37"
 http = "0.2"
@@ -21,3 +19,4 @@ mail-send = "0.3.3"
 directories = "5.0.0"
 env_logger = "0.10.0"
 log = "0.4.17"
+async-curl = "0.1.6"
