@@ -1,5 +1,6 @@
 // Standard libraries
 use std::fmt;
+use std::time::Duration;
 
 // 3rd party crates
 use async_curl::async_curl::AsyncCurl;
@@ -106,6 +107,10 @@ pub async fn async_http_client(request: HttpRequest) -> Result<HttpResponse, Err
     } else {
         assert_eq!(request.method, Method::GET);
     }
+
+    easy.connect_timeout(Duration::from_secs(30))
+        .map_err(Error::Curl)?;
+    easy.timeout(Duration::from_secs(60)).map_err(Error::Curl)?;
 
     if !request.body.is_empty() {
         let form_slice = &request.body[..];
