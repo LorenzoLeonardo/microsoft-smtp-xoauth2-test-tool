@@ -7,10 +7,12 @@ mod token_keeper;
 
 // Standard libraries
 use std::env;
+use std::io::Write;
 use std::str::FromStr;
 
 // 3rd party crates
-use env_logger::Env;
+use chrono::Local;
+use log::LevelFilter;
 use mail_send::{mail_builder::MessageBuilder, Credentials, SmtpClientBuilder};
 use oauth2::ClientSecret;
 use strum_macros::EnumString;
@@ -44,7 +46,30 @@ impl From<String> for OAuth2TokenGrantFlow {
 }
 
 fn init_logger(level: &str) {
-    env_logger::Builder::from_env(Env::default().default_filter_or(level)).init();
+    //env_logger::Builder::from_env(Env::default().default_filter_or(level)).init();
+    let mut log_builder = env_logger::Builder::new();
+    log_builder.format(|buf, record| {
+        let mut module = "";
+        if let Some(path) = record.module_path() {
+            if let Some(split) = path.split("::").last() {
+                module = split;
+            }
+        }
+
+        writeln!(
+            buf,
+            "{}[{}]:{}: {}",
+            Local::now().format("[%d-%m-%Y %H:%M:%S]"),
+            record.level(),
+            module,
+            record.args()
+        )
+    });
+
+    log_builder.filter_level(LevelFilter::from_str(level).unwrap_or(LevelFilter::Info));
+    if let Err(e) = log_builder.try_init() {
+        log::error!("{:?}", e);
+    }
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -59,8 +84,11 @@ async fn main() -> OAuth2Result<()> {
     let client_id = &args[ParamIndex::ClientId as usize];
     let receiver_email = &args[ParamIndex::RecipientEmail as usize];
     let receiver_name = &args[ParamIndex::RecipientName as usize];
-    init_logger(args[ParamIndex::DebugLevel as usize].as_str());
-
+    if args.len() <= (ParamIndex::DebugLevel as usize) {
+        init_logger("info");
+    } else {
+        init_logger(args[ParamIndex::DebugLevel as usize].as_str());
+    }
     let access_token =
         match OAuth2TokenGrantFlow::from(args[ParamIndex::TokenGrantType as usize].to_string()) {
             OAuth2TokenGrantFlow::AuthorizationCodeGrant => {
