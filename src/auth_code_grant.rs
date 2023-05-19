@@ -209,10 +209,7 @@ pub async fn auth_code_grant(
     if let Err(_err) = token_keeper.read(&token_file) {
         let (authorize_url, _csrf_state) =
             auth_code_grant.generate_authorization_url(scopes).await?;
-        log::info!(
-            "Open this URL in your browser:\n{}\n",
-            authorize_url.to_string()
-        );
+        log::info!("Open this link: {}", authorize_url.to_string());
 
         let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
         if let Some(mut stream) = listener.incoming().flatten().next() {

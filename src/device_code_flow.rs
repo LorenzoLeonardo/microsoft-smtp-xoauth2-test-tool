@@ -217,11 +217,13 @@ pub async fn device_code_flow(
             .await?;
 
         log::info!(
-            "Open this URL in your browser:\n{}\nand enter the code: {}\n\n",
+            "Open this link: {}",
             &device_auth_response.verification_uri().as_str(),
+        );
+        log::info!(
+            "Input this code: {}",
             &device_auth_response.user_code().secret()
         );
-
         let token = oauth2_cloud
             .poll_access_token(device_auth_response, async_http_client)
             .await?;
