@@ -3,8 +3,8 @@ use oauth2::{url::Url, AccessToken, HttpRequest};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    curl::Curl,
     error::{OAuth2Error, OAuth2Result},
-    http_client::async_http_client,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -22,7 +22,7 @@ pub struct SenderProfile {
 }
 
 impl SenderProfile {
-    pub async fn get_sender_profile(access_token: &AccessToken) -> OAuth2Result<Self> {
+    pub async fn get_sender_profile(access_token: &AccessToken, curl: Curl) -> OAuth2Result<Self> {
         let mut headers = HeaderMap::new();
 
         let header_val = format!("Bearer {}", access_token.secret().as_str());
@@ -38,11 +38,9 @@ impl SenderProfile {
             body: Vec::new(),
         };
 
-        let response = async_http_client(request)
-            .await
-            .map_err(OAuth2Error::from)?;
+        let response = curl.send(request).await?;
 
-        let body = String::from_utf8(response.body).unwrap_or(String::new());
+        let body = String::from_utf8(response.body).unwrap_or_default();
 
         let sender_profile: SenderProfile = serde_json::from_str(&body)?;
         log::info!("Sender Name: {}", sender_profile.display_name.as_str());
