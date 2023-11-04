@@ -13,9 +13,9 @@ use oauth2::{
 };
 use oauth2::{AccessToken, AuthorizationCode};
 
+use crate::curl::Curl;
 // My crates
 use crate::error::{ErrorCodes, OAuth2Error, OAuth2Result};
-use crate::http_client::async_http_client;
 use crate::TokenKeeper;
 
 #[async_trait]
@@ -185,6 +185,7 @@ impl AuthCodeGrant {
 pub async fn auth_code_grant(
     client_id: &str,
     client_secret: Option<ClientSecret>,
+    curl: Curl,
 ) -> OAuth2Result<AccessToken> {
     let auth_code_grant = AuthCodeGrant::new(
         ClientId::new(client_id.to_string()),
@@ -257,14 +258,18 @@ pub async fn auth_code_grant(
 
             // Exchange the code with a token.
             token_keeper = auth_code_grant
-                .exchange_auth_code(&directory, &token_file, code, async_http_client)
+                .exchange_auth_code(&directory, &token_file, code, |request| async {
+                    curl.send(request).await
+                })
                 .await?;
 
             // The server will terminate itself after collecting the first code.
         }
     } else {
         token_keeper = auth_code_grant
-            .get_access_token(&directory, &token_file, async_http_client)
+            .get_access_token(&directory, &token_file, |request| async {
+                curl.send(request).await
+            })
             .await?;
     }
     Ok(token_keeper.access_token)

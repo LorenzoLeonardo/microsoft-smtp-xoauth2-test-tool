@@ -15,11 +15,8 @@ use oauth2::{
 };
 
 // My crates
-use crate::TokenKeeper;
-use crate::{
-    error::{ErrorCodes, OAuth2Error, OAuth2Result},
-    http_client::async_http_client,
-};
+use crate::error::{ErrorCodes, OAuth2Error, OAuth2Result};
+use crate::{curl::Curl, TokenKeeper};
 
 #[async_trait]
 pub trait DeviceCodeFlowTrait {
@@ -188,6 +185,7 @@ impl DeviceCodeFlow {
 pub async fn device_code_flow(
     client_id: &str,
     client_secret: Option<ClientSecret>,
+    curl: Curl,
 ) -> OAuth2Result<AccessToken> {
     let oauth2_cloud = DeviceCodeFlow::new(
         ClientId::new(client_id.to_string()),
@@ -213,7 +211,7 @@ pub async fn device_code_flow(
     // If there is no exsting token, get it from the cloud
     if let Err(_err) = token_keeper.read(&token_file) {
         let device_auth_response = oauth2_cloud
-            .request_device_code(scopes, async_http_client)
+            .request_device_code(scopes, |request| async { curl.send(request).await })
             .await?;
 
         log::info!(
@@ -225,7 +223,9 @@ pub async fn device_code_flow(
             &device_auth_response.user_code().secret()
         );
         let token = oauth2_cloud
-            .poll_access_token(device_auth_response, async_http_client)
+            .poll_access_token(device_auth_response, |request| async {
+                curl.send(request).await
+            })
             .await?;
         token_keeper = TokenKeeper::from(token);
         token_keeper.set_directory(directory.to_path_buf());
@@ -233,7 +233,9 @@ pub async fn device_code_flow(
         token_keeper.save(&token_file)?;
     } else {
         token_keeper = oauth2_cloud
-            .get_access_token(&directory, &token_file, async_http_client)
+            .get_access_token(&directory, &token_file, |request| async {
+                curl.send(request).await
+            })
             .await?;
     }
     Ok(token_keeper.access_token)

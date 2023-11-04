@@ -1,8 +1,8 @@
 mod auth_code_grant;
+mod curl;
 mod device_code_flow;
 mod error;
 mod get_profile;
-mod http_client;
 mod token_keeper;
 
 // Standard libraries
@@ -19,6 +19,7 @@ use strum_macros::EnumString;
 
 // My crates
 use crate::auth_code_grant::auth_code_grant;
+use crate::curl::Curl;
 use crate::device_code_flow::device_code_flow;
 use crate::get_profile::SenderProfile;
 use error::OAuth2Result;
@@ -89,17 +90,19 @@ async fn main() -> OAuth2Result<()> {
     } else {
         init_logger(args[ParamIndex::DebugLevel as usize].as_str());
     }
+
+    let curl = Curl::new();
     let access_token =
         match OAuth2TokenGrantFlow::from(args[ParamIndex::TokenGrantType as usize].to_string()) {
             OAuth2TokenGrantFlow::AuthorizationCodeGrant => {
-                auth_code_grant(client_id, client_secret).await?
+                auth_code_grant(client_id, client_secret, curl.clone()).await?
             }
             OAuth2TokenGrantFlow::DeviceCodeFlow => {
-                device_code_flow(client_id, client_secret).await?
+                device_code_flow(client_id, client_secret, curl.clone()).await?
             }
         };
 
-    let sender_profile = SenderProfile::get_sender_profile(&access_token).await?;
+    let sender_profile = SenderProfile::get_sender_profile(&access_token, curl).await?;
     // Start of sending Email
     let message = MessageBuilder::new()
         .from((
