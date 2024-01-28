@@ -1,6 +1,6 @@
 [package]
 name = "microsoft-smtp-xoauth2-test-tool"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 author = "Lorenzo Leonardo <enzotechcomputersolutions@gmail.com>"
 
@@ -8,7 +8,7 @@ author = "Lorenzo Leonardo <enzotechcomputersolutions@gmail.com>"
 async-curl = "0.2"
 async-trait = "0.1"
 chrono = "0.4"
-curl-http-client = "0.2"
+curl-http-client = "0.3"
 derive-deref-rs = "0.1"
 directories = "5.0"
 env_logger = "0.10"

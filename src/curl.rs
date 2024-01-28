@@ -43,7 +43,10 @@ impl Curl {
         }
     }
 
-    pub async fn send(&self, request: oauth2::HttpRequest) -> Result<oauth2::HttpResponse, Error> {
+    pub async fn send(
+        &self,
+        request: oauth2::HttpRequest,
+    ) -> Result<oauth2::HttpResponse, Error<Collector>> {
         log::debug!("Request Url: {}", request.url);
         log::debug!("Request Header: {:?}", request.headers);
         log::debug!("Request Method: {}", request.method);
