@@ -5,10 +5,10 @@ edition = "2021"
 author = "Lorenzo Leonardo <enzotechcomputersolutions@gmail.com>"
 
 [dependencies]
-async-curl = "0.2"
+async-curl = "0.3"
 async-trait = "0.1"
 chrono = "0.4"
-curl-http-client = "0.3"
+curl-http-client = "1.0"
 derive-deref-rs = "0.1"
 directories = "5.0"
 env_logger = "0.10"
@@ -21,4 +21,4 @@ serde_json = "1.0"
 strum = "0.24"
 strum_macros = "0.24"
 thiserror = "1.0"
-tokio = { version = "1.33", features = ["rt"] }
+tokio = { version = "1.36", features = ["rt"] }
