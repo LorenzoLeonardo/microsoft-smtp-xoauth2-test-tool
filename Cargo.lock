@@ -873,7 +873,7 @@ checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 
 [[package]]
 name = "microsoft-smtp-xoauth2-test-tool"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "async-curl",
  "async-trait",
