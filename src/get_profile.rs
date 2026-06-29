@@ -1,5 +1,4 @@
-use http::{HeaderMap, HeaderValue};
-use oauth2::{url::Url, AccessToken, HttpRequest};
+use oauth2::AccessToken;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -23,24 +22,18 @@ pub struct SenderProfile {
 
 impl SenderProfile {
     pub async fn get_sender_profile(access_token: &AccessToken, curl: Curl) -> OAuth2Result<Self> {
-        let mut headers = HeaderMap::new();
-
         let header_val = format!("Bearer {}", access_token.secret().as_str());
-        headers.insert(
-            "Authorization",
-            HeaderValue::from_str(&header_val).map_err(OAuth2Error::from)?,
-        );
 
-        let request = HttpRequest {
-            url: Url::parse("https://outlook.office.com/api/v2.0/me/")?,
-            method: http::method::Method::GET,
-            headers,
-            body: Vec::new(),
-        };
+        let request = http::Request::builder()
+            .method("GET")
+            .uri("https://outlook.office.com/api/v2.0/me/")
+            .header("Authorization", header_val)
+            .body(Vec::new())
+            .map_err(OAuth2Error::from)?;
 
         let response = curl.send(request).await?;
 
-        let body = String::from_utf8(response.body).unwrap_or_default();
+        let body = String::from_utf8(response.body().to_vec()).unwrap_or_default();
 
         let sender_profile: SenderProfile = serde_json::from_str(&body)?;
         log::info!("Sender Name: {}", sender_profile.display_name.as_str());
