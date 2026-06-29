@@ -21,6 +21,7 @@ use strum_macros::EnumString;
 use crate::auth_code_grant::auth_code_grant;
 use crate::curl::Curl;
 use crate::device_code_flow::device_code_flow;
+use crate::error::{ErrorCodes, OAuth2Error};
 use crate::get_profile::SenderProfile;
 use error::OAuth2Result;
 use token_keeper::TokenKeeper;
@@ -120,6 +121,7 @@ async fn main() -> OAuth2Result<()> {
     );
     log::info!("Authenticating SMTP XOAUTH2 Credentials....");
     let email_connect = SmtpClientBuilder::new("smtp.office365.com", 587)
+        .map_err(|e| OAuth2Error::new(ErrorCodes::Emailer, e))?
         .implicit_tls(false)
         .credentials(credentials)
         .connect()

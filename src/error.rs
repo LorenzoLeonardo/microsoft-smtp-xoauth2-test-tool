@@ -1,3 +1,4 @@
+use core::fmt;
 // Standard libraries
 use std::fmt::Debug;
 use std::{error::Error, str::FromStr};
@@ -45,6 +46,8 @@ pub enum ErrorCodes {
     ParseError,
     CurlError,
     OtherError,
+    TokioJoin,
+    Emailer,
 }
 
 impl From<String> for ErrorCodes {
@@ -92,7 +95,7 @@ where
 impl<E, O> From<RequestTokenError<E, StandardErrorResponse<O>>> for OAuth2Error
 where
     E: Error + 'static,
-    O: ErrorResponseType + 'static + ToString + Clone,
+    O: ErrorResponseType + 'static + ToString + Clone + fmt::Display,
 {
     fn from(e: RequestTokenError<E, StandardErrorResponse<O>>) -> Self {
         match e {
@@ -133,6 +136,12 @@ where
 
 impl From<InvalidHeaderValue> for OAuth2Error {
     fn from(e: InvalidHeaderValue) -> Self {
+        OAuth2Error::new(ErrorCodes::HttpError, e.to_string())
+    }
+}
+
+impl From<http::Error> for OAuth2Error {
+    fn from(e: http::Error) -> Self {
         OAuth2Error::new(ErrorCodes::HttpError, e.to_string())
     }
 }
